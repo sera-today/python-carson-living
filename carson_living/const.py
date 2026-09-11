@@ -22,12 +22,20 @@ RETRY_TOKEN = 1
 # HTTP/1.1 301 Moved Permanently to the correct version.
 C_API_VERSION = 'v1.4.4'
 C_API_URI = 'https://api.carson.live/api/' + C_API_VERSION
+C_RESERVATIONS_API_URI = 'https://api.carson.live/api/v2.0.0'
 
 C_AUTH_ENDPOINT = '/auth/login/'
 C_ME_ENDPOINT = '/me/'
 
 C_DOOR_OPEN_ENDPOINT = '/doors/{}/open/'
 C_EEN_SESSION_ENDPOINT = '/properties/buildings/{}/eagleeye/session/'
+
+C_AMENITIES_ENDPOINT = '/amenities/'
+C_AMENITY_ENDPOINT = '/amenities/{}/'
+C_AMENITY_RESERVED_DATES_ENDPOINT = '/amenities/{}/reserved-dates/'
+C_AMENITY_ALLOWED_HOURS_ENDPOINT = '/amenities/{}/allowed-hours/'
+C_AMENITY_RESERVATIONS_ENDPOINT = '/amenities/reservations/'
+C_AMENITY_RESERVATION_COUNTS_ENDPOINT = '/amenities/reservations/counts/'
 
 # Eagle Eye API endpoints
 # Beware URLs DO NOT end in '/', otherwise it returns a 500

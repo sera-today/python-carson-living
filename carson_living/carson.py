@@ -6,6 +6,7 @@ from carson_living.auth import CarsonAuth
 
 from carson_living.carson_entities import (CarsonUser,
                                            CarsonBuilding)
+from carson_living.reservations import CarsonReservations
 from carson_living.const import (C_API_URI,
                                  C_ME_ENDPOINT)
 from carson_living.util import update_dictionary
@@ -49,8 +50,14 @@ class Carson(CarsonAuth):
         """The current authenticated user"""
         return self._user
 
+    def reservations_for(self, building_id):
+        """Return reservation client for an explicit account building."""
+        if building_id not in self._buildings:
+            raise ValueError('building_id is not associated with this account')
+        return CarsonReservations(self, building_id)
+
     def update(self):
-        """Update entity list and individual entity parameters associated with the API
+        """Update entities and parameters associated with the API.
 
         """
         _LOGGER.debug('Updating Carson Living API and associated entities')

@@ -18,6 +18,7 @@ from carson_living.eagleeye_entities import EagleEyeCamera
 from carson_living.carson_entities import (CarsonDoor,
                                            CarsonBuilding,
                                            CarsonUser)
+from carson_living.reservations import CarsonReservations
 
 from carson_living.const import (EEN_ASSET_REF_ASSET,
                                  EEN_ASSET_REF_PREV,
@@ -42,6 +43,7 @@ __all__ = ['CarsonAuth',
            'CarsonDoor',
            'CarsonBuilding',
            'CarsonUser',
+           'CarsonReservations',
            'EEN_ASSET_REF_ASSET',
            'EEN_ASSET_REF_PREV',
            'EEN_ASSET_REF_NEXT',

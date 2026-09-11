@@ -1,0 +1,1 @@
+{"code":0,"status":"OK","data":{"count":1,"next":null,"previous":null,"results":[{"id":9001,"amenity":{"id":441},"date":"2026-01-02","startTime":"10:00:00","endTime":"11:00:00","status":{"status":"approved","autoApprovedRequest":true}}]},"msg":null}
