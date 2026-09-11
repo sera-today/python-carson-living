@@ -36,6 +36,8 @@ C_AMENITY_RESERVED_DATES_ENDPOINT = '/amenities/{}/reserved-dates/'
 C_AMENITY_ALLOWED_HOURS_ENDPOINT = '/amenities/{}/allowed-hours/'
 C_AMENITY_RESERVATIONS_ENDPOINT = '/amenities/reservations/'
 C_AMENITY_RESERVATION_COUNTS_ENDPOINT = '/amenities/reservations/counts/'
+C_AMENITY_CREATE_RESERVATION_ENDPOINT = '/amenities/{}/reservations/'
+C_AMENITY_CANCEL_RESERVATION_ENDPOINT = '/amenities/reservations/{}/'
 
 # Eagle Eye API endpoints
 # Beware URLs DO NOT end in '/', otherwise it returns a 500

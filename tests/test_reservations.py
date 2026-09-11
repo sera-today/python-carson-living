@@ -7,9 +7,12 @@ import requests_mock
 from carson_living.const import (
     C_AMENITIES_ENDPOINT,
     C_AMENITY_ALLOWED_HOURS_ENDPOINT,
+    C_AMENITY_CANCEL_RESERVATION_ENDPOINT,
+    C_AMENITY_CREATE_RESERVATION_ENDPOINT,
     C_AMENITY_RESERVATIONS_ENDPOINT,
     C_RESERVATIONS_API_URI,
 )
+from carson_living.error import CarsonMutationApprovalError
 from tests.helpers import load_fixture
 from tests.test_base import CarsonUnitTestBase
 
@@ -62,3 +65,60 @@ class TestReservations(CarsonUnitTestBase):
         """Reservation clients cannot escape the account's buildings."""
         with self.assertRaises(ValueError):
             self.carson.reservations_for('not-associated')
+
+    @requests_mock.Mocker()
+    def test_create_requires_confirmation_and_reconciles(self, mock):
+        """Create uses captured POST and verifies the authoritative list."""
+        client = self.carson.reservations_for(self.first_building.entity_id)
+        with self.assertRaises(CarsonMutationApprovalError):
+            client.create_reservation(442, '2026-01-03', '09:00:00',
+                                      '10:00:00', operation_id='create-1')
+
+        hours_url = (C_RESERVATIONS_API_URI +
+                     C_AMENITY_ALLOWED_HOURS_ENDPOINT.format(442))
+        mock.get(hours_url, json={
+            'code': 0, 'status': 'OK', 'msg': None,
+            'data': [{'startTime': '09:00:00', 'endTime': '10:00:00'}],
+        })
+        create_url = (C_RESERVATIONS_API_URI +
+                      C_AMENITY_CREATE_RESERVATION_ENDPOINT.format(442))
+        created = json.loads(load_fixture(
+            'carson.live', 'carson_reservation_created.json'))
+        mock.post(create_url, json=created, status_code=201)
+        listing = {
+            'code': 0, 'status': 'OK', 'msg': None,
+            'data': {'count': 1, 'next': None, 'previous': None,
+                     'results': [created['data']]},
+        }
+        mock.get(C_RESERVATIONS_API_URI + C_AMENITY_RESERVATIONS_ENDPOINT,
+                 json=listing)
+        result = client.create_reservation(
+            442, '2026-01-03', '09:00:00', '10:00:00',
+            operation_id='create-1', confirmed=True)
+        self.assertEqual(9002, result['id'])
+        self.assertEqual(result, client.create_reservation(
+            442, '2026-01-03', '09:00:00', '10:00:00',
+            operation_id='create-1', confirmed=True))
+
+    @requests_mock.Mocker()
+    def test_cancel_requires_confirmation_and_reconciles(self, mock):
+        """Cancel uses captured DELETE and verifies removal from Upcoming."""
+        client = self.carson.reservations_for(self.first_building.entity_id)
+        reservation = {
+            'id': 9002, 'amenity': {'id': 442}, 'date': '2026-01-03',
+            'startTime': '09:00:00', 'endTime': '10:00:00',
+        }
+        listing_url = (C_RESERVATIONS_API_URI +
+                       C_AMENITY_RESERVATIONS_ENDPOINT)
+        mock.get(listing_url, [
+            {'json': {'code': 0, 'status': 'OK', 'msg': None,
+                      'data': {'count': 1, 'results': [reservation]}}},
+            {'json': {'code': 0, 'status': 'OK', 'msg': None,
+                      'data': {'count': 0, 'results': []}}},
+        ])
+        cancel_url = (C_RESERVATIONS_API_URI +
+                      C_AMENITY_CANCEL_RESERVATION_ENDPOINT.format(9002))
+        mock.delete(cancel_url, status_code=204)
+        result = client.cancel_reservation(
+            9002, operation_id='cancel-1', confirmed=True)
+        self.assertEqual({'id': 9002, 'status': 'cancelled'}, result)

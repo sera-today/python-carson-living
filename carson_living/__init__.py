@@ -11,6 +11,8 @@ from carson_living.error import (CarsonAuthenticationError,
                                  CarsonAPIError,
                                  CarsonError,
                                  CarsonCommunicationError,
+                                 CarsonMutationApprovalError,
+                                 CarsonUncertainMutationError,
                                  CarsonTokenError)
 
 from carson_living.eagleeye import EagleEye
@@ -37,6 +39,8 @@ __all__ = ['CarsonAuth',
            'CarsonAPIError',
            'CarsonError',
            'CarsonCommunicationError',
+           'CarsonMutationApprovalError',
+           'CarsonUncertainMutationError',
            'CarsonTokenError',
            'EagleEye',
            'EagleEyeCamera',

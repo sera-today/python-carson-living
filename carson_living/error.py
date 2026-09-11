@@ -20,3 +20,11 @@ class CarsonAPIError(CarsonError):
 
 class CarsonAuthenticationError(CarsonAPIError):
     """Carson Living authentication error"""
+
+
+class CarsonMutationApprovalError(CarsonError):
+    """A reservation mutation lacks explicit confirmation or operation ID."""
+
+
+class CarsonUncertainMutationError(CarsonError):
+    """A reservation mutation could not be reconciled authoritatively."""
