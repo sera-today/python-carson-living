@@ -1,0 +1,503 @@
+openapi: 3.1.0
+info:
+  title: Carson Living Resident Amenity Reservations API
+  version: 2026-09-10-observed
+  description: |
+    Unofficial, reverse-engineered description of the Carson resident amenity
+    reservation calls observed from an authorized account and official iOS app.
+    It is not vendor documentation. Operations marked `x-observation-status` were
+    observed live on 2026-09-10; undocumented response properties are preserved
+    through `additionalProperties` rather than guessed.
+  license:
+    name: Unlicense
+    identifier: Unlicense
+servers:
+  - url: https://api.carson.live
+    description: Observed Carson production origin
+tags:
+  - name: Authentication
+    description: Resident credential exchange.
+  - name: Account
+    description: Authenticated resident and building scope.
+  - name: Amenities
+    description: Amenity catalog, rules, dates, and time slots.
+  - name: Reservations
+    description: Reservation reads and explicitly confirmed mutations.
+paths:
+  /api/v1.4.4/auth/login/:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Exchange resident credentials for a JWT
+      security: []
+      x-observation-status: live-observed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Carson envelope containing the resident JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginEnvelope'
+  /api/v1.4.4/me/:
+    get:
+      tags: [Account]
+      operationId: getCurrentResident
+      summary: Read the current resident and building scope
+      x-observation-status: live-observed
+      responses:
+        '200':
+          description: Current resident account and associated properties
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountEnvelope'
+  /api/v2.0.0/amenities/:
+    get:
+      tags: [Amenities]
+      operationId: listAmenities
+      summary: List active amenities for a building
+      x-observation-status: live-observed
+      parameters:
+        - $ref: '#/components/parameters/Building'
+        - name: active
+          in: query
+          required: true
+          schema: {type: integer, enum: [1]}
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Paginated amenities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AmenityPageEnvelope'
+  /api/v2.0.0/amenities/{amenityId}/:
+    get:
+      tags: [Amenities]
+      operationId: getAmenity
+      summary: Read an amenity and its current reservation rules
+      x-observation-status: live-observed
+      parameters:
+        - $ref: '#/components/parameters/AmenityId'
+      responses:
+        '200':
+          description: Amenity detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AmenityEnvelope'
+  /api/v2.0.0/amenities/{amenityId}/reserved-dates/:
+    get:
+      tags: [Amenities]
+      operationId: getReservedDates
+      summary: Read dates that cannot accept another reservation
+      x-observation-status: live-observed
+      parameters:
+        - $ref: '#/components/parameters/AmenityId'
+      responses:
+        '200':
+          description: Reserved-date information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservedDatesEnvelope'
+  /api/v2.0.0/amenities/{amenityId}/allowed-hours/:
+    get:
+      tags: [Amenities]
+      operationId: getAllowedHours
+      summary: Read allowed reservation hours for a local date
+      x-observation-status: live-observed
+      parameters:
+        - $ref: '#/components/parameters/AmenityId'
+        - name: date
+          in: query
+          required: true
+          schema: {type: string, format: date}
+        - name: start_time
+          in: query
+          required: false
+          description: Observed when selecting a start slot.
+          schema: {$ref: '#/components/schemas/LocalTime'}
+      responses:
+        '200':
+          description: Provider-defined allowed-hours data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllowedHoursEnvelope'
+        '400':
+          description: Date rejected by reservation rules or availability
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+  /api/v2.0.0/amenities/{amenityId}/reservations/:
+    post:
+      tags: [Reservations]
+      operationId: createReservation
+      summary: Create an amenity reservation
+      description: |
+        Mutation observed from an explicitly user-confirmed official-app booking.
+        Callers should recheck availability immediately and reconcile the result
+        against the authoritative Upcoming listing. Never retry automatically after
+        an ambiguous network or authentication failure.
+      x-observation-status: live-observed
+      parameters:
+        - $ref: '#/components/parameters/AmenityId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateReservationRequest'}
+      responses:
+        '201':
+          description: Created reservation
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReservationEnvelope'}
+  /api/v2.0.0/amenities/reservations/counts/:
+    get:
+      tags: [Reservations]
+      operationId: getReservationCounts
+      summary: Read reservation counts for a building
+      x-observation-status: live-observed
+      parameters:
+        - $ref: '#/components/parameters/Building'
+      responses:
+        '200':
+          description: Provider-defined reservation counts
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CountsEnvelope'}
+  /api/v2.0.0/amenities/reservations/:
+    get:
+      tags: [Reservations]
+      operationId: listReservations
+      summary: List the resident's reservations for a building
+      x-observation-status: live-observed
+      parameters:
+        - $ref: '#/components/parameters/Building'
+        - name: approval_statuses
+          in: query
+          required: true
+          schema:
+            type: string
+            example: approved,denied,cancelled,pending
+        - name: status
+          in: query
+          required: true
+          schema: {type: string, example: upcoming}
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Paginated reservations
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ReservationPageEnvelope'}
+    put:
+      tags: [Reservations]
+      operationId: markReservationsSeen
+      summary: Mark reservation notifications as seen
+      description: This is not a booking operation; it clears the observed `hasNew` state.
+      x-observation-status: live-observed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MarkSeenRequest'}
+      responses:
+        '200':
+          description: Standard Carson success envelope; exact data shape not asserted
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GenericEnvelope'}
+  /api/v2.0.0/amenities/reservations/{reservationId}/:
+    delete:
+      tags: [Reservations]
+      operationId: cancelReservation
+      summary: Cancel one reservation
+      description: |
+        Mutation observed from an explicitly user-confirmed official-app cancellation.
+        A 204 must be reconciled by verifying the reservation is absent from Upcoming.
+        Never retry automatically after an ambiguous result.
+      x-observation-status: live-observed
+      parameters:
+        - $ref: '#/components/parameters/ReservationId'
+      responses:
+        '204':
+          description: Reservation cancelled; no response body
+components:
+  securitySchemes:
+    CarsonJWT:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Use the exact header value `JWT <token>`.
+  parameters:
+    Building:
+      name: building
+      in: query
+      required: true
+      schema: {$ref: '#/components/schemas/OpaqueId'}
+    AmenityId:
+      name: amenityId
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/OpaqueId'}
+    ReservationId:
+      name: reservationId
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/OpaqueId'}
+    Limit:
+      name: limit
+      in: query
+      required: true
+      schema: {type: integer, minimum: 1, default: 20}
+    Offset:
+      name: offset
+      in: query
+      required: true
+      schema: {type: integer, minimum: 0, default: 0}
+  schemas:
+    OpaqueId:
+      oneOf:
+        - type: integer
+        - type: string
+      description: Provider identifier; clients must treat it as opaque.
+    LocalTime:
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$'
+      example: '10:00:00'
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: {type: string}
+        password: {type: string, format: password, writeOnly: true}
+    LoginData:
+      type: object
+      required: [token]
+      properties:
+        pk: {$ref: '#/components/schemas/OpaqueId'}
+        token: {type: string, writeOnly: true}
+      additionalProperties: true
+    Building:
+      type: object
+      required: [id, propertyLevel]
+      properties:
+        id: {$ref: '#/components/schemas/OpaqueId'}
+        name: {type: string}
+        propertyLevel: {type: string, const: building}
+        timezone: {type: [string, 'null']}
+        units:
+          type: array
+          items: {$ref: '#/components/schemas/Unit'}
+        amenitiesData:
+          type: object
+          properties:
+            amenitiesReservationsAllowed: {type: boolean}
+            amenitiesCount: {type: integer, minimum: 0}
+          additionalProperties: true
+      additionalProperties: true
+    Unit:
+      type: object
+      properties:
+        id: {$ref: '#/components/schemas/OpaqueId'}
+        name: {type: string}
+        propertyLevel: {type: string}
+        building: {$ref: '#/components/schemas/OpaqueId'}
+      additionalProperties: true
+    Account:
+      type: object
+      required: [id, properties]
+      properties:
+        id: {$ref: '#/components/schemas/OpaqueId'}
+        properties:
+          type: array
+          items: {$ref: '#/components/schemas/Building'}
+      additionalProperties: true
+    Amenity:
+      type: object
+      required: [id, name]
+      properties:
+        id: {$ref: '#/components/schemas/OpaqueId'}
+        name: {type: string}
+        active: {type: boolean}
+        timezone: {type: [string, 'null']}
+        notes: {type: [string, 'null']}
+        minimumDaysBeforeReservation: {type: [integer, 'null'], minimum: 0}
+        maximumDaysBeforeReservation: {type: [integer, 'null'], minimum: 0}
+        minimumReservationTime: {type: [integer, string, 'null']}
+        maximumReservationTime: {type: [integer, string, 'null']}
+        simultaneousNumberOfReservations: {type: [integer, 'null'], minimum: 0}
+        requiresApproval: {type: boolean}
+        rentalAgreementRequired: {type: boolean}
+        schedule: {}
+        reservationsCount: {type: [integer, 'null']}
+        reservationsCountPerWeek: {type: [integer, 'null']}
+        reservationsCountPerMonth: {type: [integer, 'null']}
+        reservationsLeft: {type: [integer, 'null']}
+        reservationsLeftPerWeek: {type: [integer, 'null']}
+        reservationsLeftPerMonth: {type: [integer, 'null']}
+        upcomingReservationsCount: {type: [integer, 'null']}
+      additionalProperties: true
+    ReservationStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          examples: [approved, denied, cancelled, pending]
+        autoApprovedRequest: {type: boolean}
+      additionalProperties: true
+    Reservation:
+      type: object
+      required: [id, amenity, date, startTime, endTime, status]
+      properties:
+        id: {$ref: '#/components/schemas/OpaqueId'}
+        amenity: {$ref: '#/components/schemas/Amenity'}
+        building: {}
+        unit: {}
+        date: {type: string, format: date}
+        startTime: {$ref: '#/components/schemas/LocalTime'}
+        endTime: {$ref: '#/components/schemas/LocalTime'}
+        status: {$ref: '#/components/schemas/ReservationStatus'}
+        expired: {type: boolean}
+        hasNew: {type: boolean}
+      additionalProperties: true
+    CreateReservationRequest:
+      type: object
+      additionalProperties: false
+      required: [date, startTime, endTime]
+      properties:
+        date: {type: string, format: date}
+        startTime: {$ref: '#/components/schemas/LocalTime'}
+        endTime: {$ref: '#/components/schemas/LocalTime'}
+    MarkSeenRequest:
+      type: object
+      additionalProperties: false
+      required: [amenity_reservations]
+      properties:
+        amenity_reservations:
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/OpaqueId'}
+    Page:
+      type: object
+      required: [count, results]
+      properties:
+        count: {type: integer, minimum: 0}
+        next: {type: [string, 'null'], format: uri}
+        previous: {type: [string, 'null'], format: uri}
+        results: {type: array}
+      additionalProperties: true
+    AmenityPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            results:
+              type: array
+              items: {$ref: '#/components/schemas/Amenity'}
+    ReservationPage:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            results:
+              type: array
+              items: {$ref: '#/components/schemas/Reservation'}
+    ReservedDatesData:
+      type: object
+      properties:
+        reservedDates:
+          type: array
+          items: {type: string, format: date}
+        hasAvailableDates: {type: boolean}
+      additionalProperties: true
+    Envelope:
+      type: object
+      required: [code, status, data]
+      properties:
+        code: {type: integer, const: 0}
+        status: {type: string, const: OK}
+        data: {}
+        msg: {type: [string, 'null']}
+      additionalProperties: false
+    GenericEnvelope:
+      $ref: '#/components/schemas/Envelope'
+    ErrorEnvelope:
+      type: object
+      properties:
+        code: {type: integer}
+        status: {type: string}
+        data: {}
+        msg: {type: [string, 'null']}
+      additionalProperties: true
+    LoginEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: {$ref: '#/components/schemas/LoginData'}
+    AccountEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: {$ref: '#/components/schemas/Account'}
+    AmenityEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: {$ref: '#/components/schemas/Amenity'}
+    AmenityPageEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: {$ref: '#/components/schemas/AmenityPage'}
+    ReservationEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: {$ref: '#/components/schemas/Reservation'}
+    ReservationPageEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: {$ref: '#/components/schemas/ReservationPage'}
+    ReservedDatesEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: {$ref: '#/components/schemas/ReservedDatesData'}
+    AllowedHoursEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              description: Shape is provider-defined; preserve without coercion.
+    CountsEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              additionalProperties: true
+security:
+  - CarsonJWT: []

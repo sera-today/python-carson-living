@@ -1,0 +1,8 @@
+extends:
+  - recommended
+rules:
+  # Carson's observed canonical endpoints require trailing slashes.
+  no-path-trailing-slash: off
+  # The provider owns overlapping literal/templated routes; both were observed.
+  no-ambiguous-paths: off
+  operation-4xx-response: off
